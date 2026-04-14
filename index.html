@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catch the Stars ⭐</title>
+<style>
+  /* 全局样式 */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Arial Rounded MT Bold', Arial, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+    min-height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* 顶部信息栏 */
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+    z-index: 200;
+  }
+
+  #hud h1 {
+    font-size: 1.5rem;
+    color: #FFD700;
+    text-shadow: 0 0 12px #FFD700;
+  }
+
+  #scoreBox {
+    font-size: 1.4rem;
+    color: #fff;
+    background: rgba(255,215,0,0.2);
+    border: 2px solid #FFD700;
+    border-radius: 20px;
+    padding: 6px 20px;
+  }
+
+  #timerBox {
+    font-size: 1.4rem;
+    color: #fff;
+    background: rgba(100,200,255,0.2);
+    border: 2px solid #64C8FF;
+    border-radius: 20px;
+    padding: 6px 20px;
+  }
+
+  /* 游戏区域 */
+  #gameArea {
+    position: fixed;
+    top: 60px; left: 0; right: 0; bottom: 0;
+    overflow: hidden;
+  }
+
+  /* 开始/结束屏幕 */
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,10,30,0.85);
+    z-index: 100;
+  }
+
+  #overlay h2 {
+    font-size: 2.8rem;
+    color: #FFD700;
+    text-shadow: 0 0 20px #FFD700, 0 0 40px #FFA500;
+    margin-bottom: 14px;
+    animation: pulse 1.5s infinite alternate;
+  }
+
+  #overlay p {
+    font-size: 1.15rem;
+    color: #cce;
+    margin-bottom: 32px;
+    text-align: center;
+    max-width: 320px;
+    line-height: 1.6;
+  }
+
+  #overlay .finalScore {
+    font-size: 2rem;
+    color: #FFD700;
+    margin-bottom: 20px;
+  }
+
+  /* 大按钮 */
+  .bigBtn {
+    font-size: 1.5rem;
+    padding: 18px 56px;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    font-weight: bold;
+    letter-spacing: 1px;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+  }
+
+  #startBtn {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #1a1a2e;
+  }
+
+  #restartBtn {
+    background: linear-gradient(135deg, #00C9FF, #92FE9D);
+    color: #1a1a2e;
+    display: none;
+  }
+
+  .bigBtn:hover { transform: scale(1.07); box-shadow: 0 10px 32px rgba(255,215,0,0.5); }
+  .bigBtn:active { transform: scale(0.96); }
+
+  /* 星星样式 */
+  .star {
+    position: absolute;
+    font-size: 2.6rem;
+    cursor: pointer;
+    transition: transform 0.1s;
+    animation: floatStar 0.6s ease-in-out infinite alternate;
+    filter: drop-shadow(0 0 8px #FFD700);
+    z-index: 10;
+    line-height: 1;
+  }
+
+  .star:active { transform: scale(1.4); }
+
+  /* 点击飘字 */
+  .popup {
+    position: absolute;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #FFD700;
+    pointer-events: none;
+    z-index: 50;
+    animation: floatUp 0.9s ease-out forwards;
+  }
+
+  /* 背景小星星装饰 */
+  .bgStar {
+    position: absolute;
+    color: rgba(255,255,255,0.15);
+    font-size: 1rem;
+    pointer-events: none;
+    animation: twinkle 2s infinite alternate;
+  }
+
+  @keyframes pulse {
+    from { text-shadow: 0 0 10px #FFD700; }
+    to   { text-shadow: 0 0 30px #FFD700, 0 0 60px #FFA500; }
+  }
+
+  @keyframes floatStar {
+    from { transform: translateY(0) rotate(-8deg); }
+    to   { transform: translateY(-10px) rotate(8deg); }
+  }
+
+  @keyframes floatUp {
+    0%   { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-70px); }
+  }
+
+  @keyframes twinkle {
+    from { opacity: 0.1; }
+    to   { opacity: 0.5; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 顶部HUD -->
+<div id="hud">
+  <h1>⭐ Catch the Stars</h1>
+  <div id="scoreBox">分数: 0</div>
+  <div id="timerBox">⏱ 30s</div>
+</div>
+
+<!-- 游戏区域 -->
+<div id="gameArea">
+
+  <!-- 开始/结束 遮罩 -->
+  <div id="overlay">
+    <h2>⭐ Catch the Stars ⭐</h2>
+    <p>点击屏幕上出现的星星来得分！<br>30秒内尽量多抓星星吧！</p>
+    <div class="finalScore" id="finalScore" style="display:none"></div>
+    <button class="bigBtn" id="startBtn">🚀 开始游戏</button>
+    <button class="bigBtn" id="restartBtn">🔄 再玩一次</button>
+  </div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+  // ── 变量 ──
+  var score = 0;
+  var timeLeft = 30;
+  var gameRunning = false;
+  var spawnInterval = null;
+  var timerInterval = null;
+  var stars = [];
+
+  // ── DOM 元素 ──
+  var gameArea    = document.getElementById('gameArea');
+  var overlay     = document.getElementById('overlay');
+  var scoreBox    = document.getElementById('scoreBox');
+  var timerBox    = document.getElementById('timerBox');
+  var finalScore  = document.getElementById('finalScore');
+  var startBtn    = document.getElementById('startBtn');
+  var restartBtn  = document.getElementById('restartBtn');
+
+  // ── 装饰背景星星 ──
+  var starEmojis = ['✦','✧','·','★','☆'];
+  for (var i = 0; i < 28; i++) {
+    var bg = document.createElement('div');
+    bg.className = 'bgStar';
+    bg.textContent = starEmojis[Math.floor(Math.random() * starEmojis.length)];
+    bg.style.left = Math.random() * 100 + '%';
+    bg.style.top  = Math.random() * 100 + '%';
+    bg.style.animationDelay = (Math.random() * 2) + 's';
+    bg.style.fontSize = (0.7 + Math.random() * 1.2) + 'rem';
+    gameArea.appendChild(bg);
+  }
+
+  // ── 开始游戏 ──
+  function startGame() {
+    score = 0;
+    timeLeft = 30;
+    gameRunning = true;
+
+    scoreBox.textContent = '分数: 0';
+    timerBox.textContent = '⏱ 30s';
+    timerBox.style.borderColor = '#64C8FF';
+
+    overlay.style.display = 'none';
+    finalScore.style.display = 'none';
+
+    clearAllStars();
+
+    // 每隔一段时间生成星星
+    spawnInterval = setInterval(spawnStar, 800);
+
+    // 倒计时
+    timerInterval = setInterval(function() {
+      timeLeft--;
+      timerBox.textContent = '⏱ ' + timeLeft + 's';
+
+      // 最后10秒变红提示
+      if (timeLeft <= 10) timerBox.style.borderColor = '#FF6B6B';
+      if (timeLeft <= 0) endGame();
+    }, 1000);
+  }
+
+  // ── 生成一颗星星 ──
+  var starTypes = [
+    { emoji: '⭐', points: 1, color: '#FFD700' },
+    { emoji: '🌟', points: 2, color: '#FFF700' },
+    { emoji: '💫', points: 3, color: '#FF9FF3' },
+    { emoji: '✨', points: 1, color: '#64C8FF' },
+  ];
+
+  function spawnStar() {
+    if (!gameRunning) return;
+
+    var type = starTypes[Math.floor(Math.random() * starTypes.length)];
+    var el = document.createElement('div');
+    el.className = 'star';
+    el.textContent = type.emoji;
+
+    // 随机位置（留边距避免超出）
+    var areaW = gameArea.offsetWidth;
+    var areaH = gameArea.offsetHeight;
+    var x = 30 + Math.random() * (areaW - 90);
+    var y = 20 + Math.random() * (areaH - 90);
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+
+    // 随机动画延迟让每颗星星节奏不一样
+    el.style.animationDelay = (Math.random() * 0.6) + 's';
+
+    // 点击事件
+    el.addEventListener('click', function() {
+      if (!gameRunning) return;
+      addScore(type.points, x, y);
+      showPopup('+' + type.points, x, y, type.color);
+      gameArea.removeChild(el);
+      stars = stars.filter(function(s){ return s !== el; });
+    });
+
+    gameArea.appendChild(el);
+    stars.push(el);
+
+    // 星星2.5秒后自动消失
+    setTimeout(function() {
+      if (gameArea.contains(el)) {
+        gameArea.removeChild(el);
+        stars = stars.filter(function(s){ return s !== el; });
+      }
+    }, 2500);
+  }
+
+  // ── 加分 ──
+  function addScore(pts, x, y) {
+    score += pts;
+    scoreBox.textContent = '分数: ' + score;
+    // 分数框闪烁效果
+    scoreBox.style.background = 'rgba(255,215,0,0.5)';
+    setTimeout(function(){ scoreBox.style.background = 'rgba(255,215,0,0.2)'; }, 200);
+  }
+
+  // ── 飘字动画 ──
+  function showPopup(text, x, y, color) {
+    var pop = document.createElement('div');
+    pop.className = 'popup';
+    pop.textContent = text;
+    pop.style.left = (x + 20) + 'px';
+    pop.style.top  = y + 'px';
+    pop.style.color = color || '#FFD700';
+    gameArea.appendChild(pop);
+    setTimeout(function(){ if (gameArea.contains(pop)) gameArea.removeChild(pop); }, 950);
+  }
+
+  // ── 清除所有星星 ──
+  function clearAllStars() {
+    stars.forEach(function(s){ if (gameArea.contains(s)) gameArea.removeChild(s); });
+    stars = [];
+  }
+
+  // ── 结束游戏 ──
+  function endGame() {
+    gameRunning = false;
+    clearInterval(spawnInterval);
+    clearInterval(timerInterval);
+    clearAllStars();
+
+    // 显示结束画面
+    var medal = score >= 30 ? '🏆' : score >= 15 ? '🥇' : score >= 8 ? '🥈' : '🌟';
+    overlay.style.display = 'flex';
+    finalScore.style.display = 'block';
+    finalScore.textContent = medal + ' 你得了 ' + score + ' 分！' + medal;
+
+    startBtn.style.display = 'none';
+    restartBtn.style.display = 'inline-block';
+  }
+
+  // ── 按钮事件 ──
+  if (startBtn) startBtn.addEventListener('click', function() {
+    startGame();
+  });
+
+  if (restartBtn) restartBtn.addEventListener('click', function() {
+    restartBtn.style.display = 'none';
+    startBtn.style.display = 'inline-block';
+    startGame();
+  });
+
+  // BUTTON CHECKLIST: #startBtn ✓  #restartBtn ✓
+
+});
+</script>
+</body>
+</html>
